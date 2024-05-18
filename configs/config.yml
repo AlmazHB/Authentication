@@ -1,0 +1,4 @@
+uri: "mongodb://localhost:27017"
+dbName: "authdb"
+port: "8080"
+jwtSecret: "your_secret_key"
