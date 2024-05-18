@@ -2,39 +2,35 @@ package database
 
 import (
 	"context"
-	"fmt"
 
-	"go.mongodb.org/mongo-driver/bson"
+	"github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-var (
-	client *mongo.Client
-	Users  *mongo.Collection
-)
+var client *mongo.Client
+var db *mongo.Database
 
-func Init(uri, database, collection string) error {
-	serverApi := options.ServerAPI(options.ServerAPIVersion1)
-	opts := options.Client().ApplyURI(uri).SetServerAPIOptions(serverApi)
-
-	localclient, err := mongo.Connect(context.Background(), opts)
+func Init(uri, dbName string) error {
+	clientOptions := options.Client().ApplyURI(uri)
+	var err error
+	client, err = mongo.Connect(context.Background(), clientOptions)
 	if err != nil {
-
-		return err
+		logrus.Fatalf("Error connecting to MongoDB: %s", err.Error())
 	}
-	client = localclient
 
-	Users = client.Database(database).Collection(collection)
-	err = client.Database(database).RunCommand(context.TODO(), bson.D{{Key: "ping", Value: 1}}).Err()
-	if err != nil {
-
-		return err
+	if err := client.Ping(context.Background(), nil); err != nil {
+		logrus.Fatalf("Error pinging MongoDB: %s", err.Error())
 	}
-	fmt.Println("MongoDB connected soccessfuly!")
 
+	db = client.Database(dbName)
 	return nil
 }
+
+func GetDatabase() *mongo.Database {
+	return db
+}
+
 func Close() error {
 	return client.Disconnect(context.Background())
 }

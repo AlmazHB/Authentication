@@ -1,15 +1,13 @@
 package main
 
 import (
-	"fmt"
-	"log"
-
-	"github.com/diamondhulk625/web"
-	"github.com/diamondhulk625/web/internall/app/configs"
-	"github.com/diamondhulk625/web/internall/app/database"
-	"github.com/diamondhulk625/web/internall/app/handler"
-	"github.com/diamondhulk625/web/internall/app/repository"
-	"github.com/diamondhulk625/web/internall/app/service"
+	"github.com/AlmazHB/Authentication/internall/app/configs"
+	"github.com/AlmazHB/Authentication/internall/app/database"
+	"github.com/AlmazHB/Authentication/internall/app/handler"
+	"github.com/AlmazHB/Authentication/internall/app/repository"
+	"github.com/AlmazHB/Authentication/internall/app/service"
+	"github.com/AlmazHB/Authentication/web"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
 
@@ -19,27 +17,30 @@ const (
 )
 
 func main() {
+	logrus.SetFormatter(&logrus.JSONFormatter{})
+
 	if err := configs.Init(confPath, confName); err != nil {
-		log.Fatalf("Error instalizing confis:%s", err.Error())
+		logrus.Fatalf("Error initializing configs: %s", err.Error())
 	}
 
-	if err := database.Init(viper.GetString("uri"), viper.GetString("dbName"), viper.GetString("dbCollection")); err != nil {
-		log.Fatalf("Error connecting to MongDB:%s", err.Error())
+	if err := database.Init(viper.GetString("uri"), viper.GetString("dbName")); err != nil {
+		logrus.Fatalf("Error connecting to MongoDB: %s", err.Error())
 	}
 
 	defer func() {
 		err := database.Close()
 		if err != nil {
-			log.Fatalf("Error MongDB not Colsed!!!")
+			logrus.Fatalf("Error MongoDB not Closed!!!")
 		}
 	}()
-	fmt.Printf("Server is listinig on %s port.\n", viper.GetString("port"))
-	repos := repository.NewRepository()
-	services := service.NewService(repos)
-	handler := handler.NewHandler(services)
-	server := new(web.Server)
-	if err := server.Run(viper.GetString("port"), handler.InitRoutes()); err != nil {
-		log.Fatal(err)
-	}
 
+	db := database.GetDatabase()
+	logrus.Printf("Server is listening on %s port.\n", viper.GetString("port"))
+	repos := repository.NewRepository(db)
+	services := service.NewService(repos)
+	handlers := handler.NewHandler(services)
+	server := new(web.Server)
+	if err := server.Run(viper.GetString("port"), handlers.InitRoutes()); err != nil {
+		logrus.Fatal(err)
+	}
 }
